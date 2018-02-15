@@ -1,0 +1,9 @@
+---
+applications:
+- name: tegola
+  memory: 4G
+  instances: 1
+  buildpack: binary_buildpack
+  services:
+    - postgis-tegola
+    - s3-tegola
