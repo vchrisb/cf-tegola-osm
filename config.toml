@@ -1,13 +1,23 @@
 [webserver]
+port = ":8080"
 
 # See https://github.com/terranodo/tegola/blob/master/cache/s3cache/README.md
 [cache]
 type = "s3"
+region = ""
+bucket = ""
+aws_access_key_id = ""
+aws_secret_access_key = ""
 
 #   Open Street Map (OSM)
 [[providers]]
 name = "osm"
 type = "postgis"
+port = 5432
+host = ""
+database = ""
+user = ""
+password = ""
 
 	[[providers.layers]]
 	name = "land_8-20"
@@ -187,6 +197,11 @@ type = "postgis"
 [[providers]]
 name = "ne"
 type = "postgis"
+port = 5432
+host = ""
+database = ""
+user = ""
+password = ""
 
 	[[providers.layers]]
 	name = "ne_110m_populated_places"
