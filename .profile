@@ -5,11 +5,17 @@ sed -i "/\[cache\]/,/^$/ s/aws_access_key_id = .*/aws_access_key_id = \"$(echo $
 sed -i "/\[cache\]/,/^$/ s/bucket = .*/bucket = \"$(echo $VCAP_SERVICES | jq -c -r '.["aws-s3"] | .[0].credentials.bucket')\"/" config.toml
 sed -i "/\[cache\]/,/^$/ s/region = .*/region = \"$(echo $VCAP_SERVICES | jq -c -r '.["aws-s3"] | .[0].credentials.region')\"/" config.toml
 
-sed -i "/\[\[providers\]\]/,/^$/ s/host = .*/host = \"$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.hostname')\"/" config.toml
-sed -i "/\[\[providers\]\]/,/^$/ s/port = .*/port = $(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.port')/" config.toml
-sed -i "/\[\[providers\]\]/,/^$/ s/database = .*/database = \"$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.database')\"/" config.toml
-sed -i "/\[\[providers\]\]/,/^$/ s/user = .*/user = \"$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.username')\"/" config.toml
-sed -i "/\[\[providers\]\]/,/^$/ s/password = .*/password = \"$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.password'  | sed 's;/;\\/;g')\"/" config.toml
+export DB_PORT=$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.port')
+export DB_HOST=$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.hostname')
+export DB_NAME=$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.database')
+export DB_USER=$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.username')
+export DB_PW=$(echo $VCAP_SERVICES | jq -c -r '.["aws-rds-postgres"] | .[0].credentials.password')
+
+sed -i "/\[\[providers\]\]/,/^$/ s/host = .*/host = \"$DB_HOST\"/" config.toml
+sed -i "/\[\[providers\]\]/,/^$/ s/port = .*/port = $DB_PORT/" config.toml
+sed -i "/\[\[providers\]\]/,/^$/ s/database = .*/database = \"$DB_NAME\"/" config.toml
+sed -i "/\[\[providers\]\]/,/^$/ s/user = .*/user = \"$DB_USER\"/" config.toml
+sed -i "/\[\[providers\]\]/,/^$/ s/password = .*/password = \"$DB_PW\"/" config.toml
 
 # update environment for import tools
 export PATH="/home/vcap/deps/0/apt/usr/lib/postgresql/9.3/bin:$PATH"

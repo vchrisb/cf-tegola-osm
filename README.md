@@ -27,32 +27,69 @@ It is based on [tegola-osm](https://github.com/terranodo/tegola-osm) and modifie
 curl -O http://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
 ```
 
-
-### Import the OSM export into PostGIS using imposm3
-
-```bash
-./imposm3 import -connection postgis://username:password@host/database-name -mapping imposm3.json -read /path/to/osm/planet-latest.osm.pbf -write
-./imposm3 import -connection postgis://username:password@host/database-name -mapping imposm3.json -deployproduction
-```
-
-### Import the OSM Land and Natural Earth dataset (requires gdal, Natural Earth can be skipped if you're only interested in OSM)
-
-run each file: `./natural_earth.sh && ./osm_land.sh`. This will download the natural earth and osm land datasets and insert it into PostGIS under a database named `natural_earth` and `osm` respectively.
-
-#### Usage:
-Both scripts support a `-v` flag for debugging.  `natural_earth.sh` also supports a `-d` flag, which will drop the existing natural earth database prior to import if set.  Since the `osm_land.sh` imports into a database shared with other data, it lacks this functionality.  Instead, only the relevent tables are dropped.
-
-### Install SQL helper functions
-Execute `postgis_helpers.sql` against your OSM database. Currently this contains a single utility function for converting building heights from strings to numbers which is important if you want to extrude buildings for the 3d effect.
+### Download tegola
 
 ```bash
-psql -U tegola -d database-name -a -f postgis_helpers.sql
+wget https://github.com/terranodo/tegola/releases/download/v0.5.0/tegola_linux_amd64
 ```
 
-### Setup SQL indexes
+### Create services on Pivotal Cloud Foundry
+
+```bash
+cf create-service aws-rds-postgres basic postgis-tegola
+cf create-service aws-s3 standard postgis-s3
+```
+
+### Prepare Database
+
+#### Push Tegola without starting it and use the new `v3-push` command to push again including the `apt-buildpack` to install required tools to prepare database
+
+```bash
+cf push -c bash
+cf v3-push tegola -b https://github.com/cloudfoundry/apt-buildpack -b binary_buildpack
+```
+
+#### SSH into app instance
+
+```bash
+cf ssh tegola
+```
+
+#### Prepare environment in the connected application instance
+
+```bash
+/tmp/lifecycle/launcher /home/vcap/app bash ''
+```
+
+#### Import the OSM export into PostGIS using imposm3
+
+```bash
+curl https://imposm.org/static/rel/imposm3-0.4.0dev-20170519-3f00374-linux-x86-64.tar.gz | tar xvz --strip-components=1
+./imposm3 import -connection postgis://$DB_USER:$DB_PW@$DB_HOST/$DB_NAME -mapping imposm3.json -read planet-latest.osm.pbf -write
+./imposm3 import -connection postgis://$DB_USER:$DB_PW@$DB_HOST/$DB_NAME -mapping imposm3.json -deployproduction
+```
+
+#### Import the OSM Land and Natural Earth dataset
+
+```bash
+./natural_earth.sh
+./osm_land.sh`
+```
+This will download the natural earth and osm land datasets and insert it into PostGIS under a database named `natural_earth` and `osm` respectively.
+
+#### Install SQL helper functions
+
+Currently this contains a single utility function for converting building heights from strings to numbers which is important if you want to extrude buildings for the 3d effect.
+
+```bash
+PGPASSWORD=$DB_PW psql -h $DB_HOST -U $DB_USER -d $DB_NAME -a -f postgis_helpers.sql
+```
+
+#### Setup SQL indexes
+
 Execute `postgis_index.sql` against your OSM database.
 ```bash
-psql -U tegola -d database-name -a -f postgis_index.sql
+PGPASSWORD=$DB_PW psql -h $DB_HOST -U $DB_USER -d $DB_NAME -a -f postgis_index.sql
 ```
 
 ## Launch tegola on Cloud Foundry
@@ -60,9 +97,7 @@ psql -U tegola -d database-name -a -f postgis_index.sql
 The file ".profile" is executed on app instance start and will populate the `config.toml` with database and s3 credentials.
 
 ```bash
-cf create-service aws-rds-postgres basic postgis-tegola
-cf create-service aws-s3 standard postgis-s3
-cf push
+cf push -c " "
 ```
 
 Open your browser to localhost and the port you configured tegola to run on (i.e. localhost:8080) to see the built in viewer.
